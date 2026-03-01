@@ -14,25 +14,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 下载 artifact
-          gh run download 5706696920 --name github-pages --dir ./downloaded-artifact
+          # 使用新的 run-id
+          gh run download 5707861278 --name github-pages --dir ./downloaded-artifact
           
-          # 查看下载了什么
           echo "=== Downloaded files ==="
           ls -la ./downloaded-artifact/
           
           # 创建 ext2 目录
           mkdir -p ext2
           
-          # 查找 .ext2 文件并复制
+          # 查找并复制 .ext2 文件
           find ./downloaded-artifact -name "*.ext2" -exec cp {} ext2/ \;
           
-          # 检查是否找到 ext2 文件
+          # 检查结果
           if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
-            echo "Found ext2 files:"
+            echo "✅ Found ext2 files:"
             ls -la ext2/
           else
-            echo "No .ext2 files found in artifact"
+            echo "❌ No .ext2 files found"
             echo "Artifact contents:"
             find ./downloaded-artifact -type f | head -20
             exit 1
@@ -43,5 +42,5 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add ext2/*.ext2
-          git commit -m "Add WebVM image from artifact #5706696920" || echo "No changes to commit"
+          git commit -m "Add WebVM image from build #7 (265MB)"
           git push
