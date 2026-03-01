@@ -9,6 +9,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true  # 启用 LFS
+      
+      - name: Setup Git LFS
+        run: |
+          git lfs install
+          git lfs track "*.ext2"
+          git add .gitattributes
       
       - name: Download artifact using gh CLI
         env:
@@ -35,42 +43,52 @@ jobs:
           # 创建 ext2 目录
           mkdir -p ext2
           
-          # 查找所有分片文件
+          # 进入 extracted 目录处理分片
           cd ./extracted
           
-          # 获取基础文件名（去掉最后一个 .cxxxxxx.txt 部分）
+          # 获取基础文件名
           for file in *.ext2.c*.txt; do
             if [ -f "$file" ]; then
               base_name=$(echo "$file" | sed 's/\.c[0-9a-f]*\.txt$//')
               echo "Base name: $base_name"
               
               # 合并所有分片
-              cat "$base_name".c*.txt > "../$base_name.ext2"
+              cat "$base_name".c*.txt > "$base_name.ext2"
               echo "✅ Merged: $base_name.ext2"
+              
+              # 移动到 ext2 目录
+              mv "$base_name.ext2" ../ext2/
+              break
             fi
-            break  # 只处理一次，找到基础名
           done
           
           cd ..
-          
-          # 移动合并后的文件到 ext2 目录
-          if [ -f *.ext2 ]; then
-            mv *.ext2 ext2/
-          fi
           
           # 检查结果
           if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
             echo "✅ Successfully created ext2 files:"
             ls -la ext2/
+            
+            # 显示文件大小
+            echo "File size:"
+            du -h ext2/*.ext2
           else
             echo "❌ Failed to create ext2 files"
             exit 1
           fi
       
-      - name: Commit and push
+      - name: Commit and push with LFS
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+          
+          # 确保 LFS 跟踪 .ext2 文件
+          git lfs track "*.ext2"
+          git add .gitattributes
+          
+          # 添加大文件到 LFS
           git add ext2/*.ext2
-          git commit -m "Add merged WebVM image from build #7"
+          git commit -m "Add merged WebVM image from build #7 (using LFS)"
+          
+          # 推送
           git push
