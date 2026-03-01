@@ -7,9 +7,11 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: webvm-image
+          name: webvm-page 
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: 5706696920
+      - name: Show downloaded files
+        run: ls -la
       - name: Setup git config
         run: |
           git config --global user.name "github-actions"
@@ -17,12 +19,13 @@ jobs:
       - name: Commit and push artifact
         run: |
           mkdir -p ext2
-          cp *.ext2 ext2/ 2>/dev/null || echo "No ext2 file found"
-          if [ -f ext2/*.ext2 ]; then
+          find . -name "*.ext2" -exec cp {} ext2/ \;
+          if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
             git add ext2/*.ext2
             git commit -m "Add WebVM image from artifact #5706696920"
             git push
           else
-            echo "No ext2 file to commit"
+            echo "No .ext2 file found"
+            ls -la
             exit 1
           fi
