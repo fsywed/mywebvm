@@ -1,0 +1,15 @@
+FROM --platform=i386 i386/debian:bookworm
+ARG DEBIAN_FRONTEND=noninteractive
+
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    mysql-client \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m user && echo "user:password" | chpasswd
+WORKDIR /home/user/
+ENV HOME="/home/user" TERM="xterm" USER="user" SHELL="/bin/bash"
+CMD [ "/bin/bash" ]
