@@ -1,5 +1,5 @@
 // The root filesystem location
-export const diskImageUrl = IMAGE_URL;
+export const diskImageUrl = "ext2/debian_mini_20260301_22544917989.ext2.ext2";
 // The root filesystem backend type
 export const diskImageType = "github";
 // Print an introduction message about the technology
