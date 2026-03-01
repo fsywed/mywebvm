@@ -19,17 +19,14 @@ jobs:
           echo "=== Downloaded files ==="
           ls -la ./downloaded-artifact/
       
-      - name: Extract artifact
+      - name: Extract and merge artifact
         run: |
           mkdir -p extracted
           
-          # 解压 tar 文件
+          # 解压 tar
           if [ -f ./downloaded-artifact/artifact.tar ]; then
             echo "Extracting artifact.tar..."
             tar -xvf ./downloaded-artifact/artifact.tar -C ./extracted/
-          else
-            echo "No tar file found, copying directly"
-            cp -r ./downloaded-artifact/* ./extracted/
           fi
           
           echo "=== Extracted files ==="
@@ -38,16 +35,35 @@ jobs:
           # 创建 ext2 目录
           mkdir -p ext2
           
-          # 查找 .ext2 文件
-          find ./extracted -name "*.ext2" -exec cp {} ext2/ \;
+          # 查找所有分片文件
+          cd ./extracted
           
+          # 获取基础文件名（去掉最后一个 .cxxxxxx.txt 部分）
+          for file in *.ext2.c*.txt; do
+            if [ -f "$file" ]; then
+              base_name=$(echo "$file" | sed 's/\.c[0-9a-f]*\.txt$//')
+              echo "Base name: $base_name"
+              
+              # 合并所有分片
+              cat "$base_name".c*.txt > "../$base_name.ext2"
+              echo "✅ Merged: $base_name.ext2"
+            fi
+            break  # 只处理一次，找到基础名
+          done
+          
+          cd ..
+          
+          # 移动合并后的文件到 ext2 目录
+          if [ -f *.ext2 ]; then
+            mv *.ext2 ext2/
+          fi
+          
+          # 检查结果
           if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
-            echo "✅ Found ext2 files:"
+            echo "✅ Successfully created ext2 files:"
             ls -la ext2/
           else
-            echo "❌ No .ext2 files found"
-            echo "All extracted files:"
-            find ./extracted -type f | head -30
+            echo "❌ Failed to create ext2 files"
             exit 1
           fi
       
@@ -56,10 +72,5 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add ext2/*.ext2
-          git commit -m "Add WebVM image from build #7 (extracted from tar)"
-          git push        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add ext2/*.ext2
-          git commit -m "Add WebVM image from build #7 (run-id: 22544917989)"
+          git commit -m "Add merged WebVM image from build #7"
           git push
