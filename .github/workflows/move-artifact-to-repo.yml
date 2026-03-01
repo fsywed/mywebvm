@@ -3,29 +3,45 @@ on: workflow_dispatch
 jobs:
   move-artifact:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: github-pages  
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: 5706696920
-      - name: Show downloaded files
-        run: ls -la
-      - name: Setup git config
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download artifact using gh CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 下载 artifact
+          gh run download 5706696920 --name github-pages --dir ./downloaded-artifact
+          
+          # 查看下载了什么
+          echo "=== Downloaded files ==="
+          ls -la ./downloaded-artifact/
+          
+          # 创建 ext2 目录
+          mkdir -p ext2
+          
+          # 查找 .ext2 文件并复制
+          find ./downloaded-artifact -name "*.ext2" -exec cp {} ext2/ \;
+          
+          # 检查是否找到 ext2 文件
+          if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
+            echo "Found ext2 files:"
+            ls -la ext2/
+          else
+            echo "No .ext2 files found in artifact"
+            echo "Artifact contents:"
+            find ./downloaded-artifact -type f | head -20
+            exit 1
+          fi
+      
+      - name: Commit and push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-      - name: Commit and push artifact
-        run: |
-          mkdir -p ext2
-          find . -name "*.ext2" -exec cp {} ext2/ \;
-          if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
-            git add ext2/*.ext2
-            git commit -m "Add WebVM image from artifact #5706696920"
-            git push
-          else
-            echo "No .ext2 file found"
-            ls -la
-            exit 1
-          fi
+          git add ext2/*.ext2
+          git commit -m "Add WebVM image from artifact #5706696920" || echo "No changes to commit"
+          git push
