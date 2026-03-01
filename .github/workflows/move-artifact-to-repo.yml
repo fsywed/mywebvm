@@ -1,1 +1,28 @@
-yaml name: Move Artifact to Repository on: workflow_dispatch: # 手动触发 inputs: run_id: description: '要搬运的构建运行ID (留空则用最新成功构建)' required: false default: '' jobs: move-artifact: runs-on: ubuntu-latest permissions: contents: write # 需要写入仓库的权限 actions: read # 需要读取Artifacts的权限 steps: - name: Checkout repository uses: actions/checkout@v4 - name: Determine run ID id: get-run run: | if [ -n "${{ github.event.inputs.run_id }}" ]; then echo "RUN_ID=${{ github.event.inputs.run_id }}" >> $GITHUB_OUTPUT else # 获取最新的成功构建的运行ID LATEST_RUN=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \ "https://api.github.com/repos/${{ github.repository }}/actions/runs?status=success&per_page=1") RUN_ID=$(echo "$LATEST_RUN" | jq -r '.workflow_runs[0].id') echo "RUN_ID=$RUN_ID" >> $GITHUB_OUTPUT echo "使用最新成功构建: $RUN_ID" fi - name: List artifacts id: list-artifacts run: | ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \ "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.get-run.outputs.RUN_ID }}/artifacts") # 找出github-pages这个artifact ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r '.artifacts[] | select(.name=="github-pages") | .id') if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then echo "错误：找不到名为 github-pages 的 artifact" exit 1 fi echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_OUTPUT echo "找到 artifact ID: $ARTIFACT_ID" - name: Download artifact env: GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} run: | # 下载artifact curl -L -o artifact.zip \ -H "Authorization: token $GH_TOKEN" \ -H "Accept: application/vnd.github+json" \ "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.list-artifacts.outputs.ARTIFACT_ID }}/zip" # 解压 unzip artifact.zip -d artifact_content # 查看里面有什么 echo "解压后的文件列表：" ls -la artifact_content/ - name: Find and move ext2 file id: find-file run: | # 在artifact_content里找.ext2文件 EXT2_FILE=$(find artifact_content -name "*.ext2" -type f | head -1) if [ -z "$EXT2_FILE" ]; then echo "错误：找不到 .ext2 文件" exit 1 fi FILENAME=$(basename "$EXT2_FILE") echo "找到文件: $FILENAME" echo "EXT2_FILE=$EXT2_FILE" >> $GITHUB_OUTPUT echo "FILENAME=$FILENAME" >> $GITHUB_OUTPUT - name: Create ext2 directory if not exists run: mkdir -p ext2 - name: Copy ext2 file to repository run: | cp "${{ steps.find-file.outputs.EXT2_FILE }}" "ext2/${{ steps.find-file.outputs.FILENAME }}" echo "文件已复制到 ext2/${{ steps.find-file.outputs.FILENAME }}" - name: Commit and push run: | git config --local user.email "action@github.com" git config --local user.name "GitHub Action" git add ext2/ git diff --quiet && git diff --staged --quiet || git commit -m "自动搬运 artifact 中的镜像文件: ${{ steps.find-file.outputs.FILENAME }}" git push 
+name: Move Artifact to Repository
+on: workflow_dispatch
+jobs:
+  move-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webvm-image
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 5706696920
+      - name: Setup git config
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+      - name: Commit and push artifact
+        run: |
+          mkdir -p ext2
+          cp *.ext2 ext2/ 2>/dev/null || echo "No ext2 file found"
+          if [ -f ext2/*.ext2 ]; then
+            git add ext2/*.ext2
+            git commit -m "Add WebVM image from artifact #5706696920"
+            git push
+          else
+            echo "No ext2 file to commit"
+            exit 1
+          fi
