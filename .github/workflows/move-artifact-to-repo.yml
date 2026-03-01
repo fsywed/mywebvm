@@ -14,27 +14,50 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 使用正确的 run-id
           gh run download 22544917989 --name github-pages --dir ./downloaded-artifact
           
           echo "=== Downloaded files ==="
           ls -la ./downloaded-artifact/
+      
+      - name: Extract artifact
+        run: |
+          mkdir -p extracted
           
+          # 解压 tar 文件
+          if [ -f ./downloaded-artifact/artifact.tar ]; then
+            echo "Extracting artifact.tar..."
+            tar -xvf ./downloaded-artifact/artifact.tar -C ./extracted/
+          else
+            echo "No tar file found, copying directly"
+            cp -r ./downloaded-artifact/* ./extracted/
+          fi
+          
+          echo "=== Extracted files ==="
+          ls -la ./extracted/
+          
+          # 创建 ext2 目录
           mkdir -p ext2
-          find ./downloaded-artifact -name "*.ext2" -exec cp {} ext2/ \;
+          
+          # 查找 .ext2 文件
+          find ./extracted -name "*.ext2" -exec cp {} ext2/ \;
           
           if [ -n "$(ls -A ext2/*.ext2 2>/dev/null)" ]; then
             echo "✅ Found ext2 files:"
             ls -la ext2/
           else
             echo "❌ No .ext2 files found"
-            echo "Artifact contents:"
-            find ./downloaded-artifact -type f | head -20
+            echo "All extracted files:"
+            find ./extracted -type f | head -30
             exit 1
           fi
       
       - name: Commit and push
         run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add ext2/*.ext2
+          git commit -m "Add WebVM image from build #7 (extracted from tar)"
+          git push        run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add ext2/*.ext2
