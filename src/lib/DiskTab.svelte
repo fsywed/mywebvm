@@ -16,17 +16,17 @@
 	function getButtonText(state)
 	{
 		if(state == "START")
-			return "Reset disk";
+			return "重置磁盘";
 		else if (state == "RESETTING")
-			return "Resetting...";
+			return "重置中...";
 		else
-			return "Reset disk. Confirm?";
+			return "重置磁盘，确认吗？";
 	}
 	function getBgColor(state)
 	{
 		if(state == "START")
 		{
-			// Use default
+			// 使用默认样式
 			return undefined;
 		}
 		else
@@ -38,7 +38,7 @@
 	{
 		if(state == "START")
 		{
-			// Use default
+			// 使用默认样式
 			return undefined;
 		}
 		else
@@ -47,16 +47,16 @@
 		}
 	}
 </script>
-<h1 class="text-lg font-bold">Disk</h1>
+<h1 class="text-lg font-bold">磁盘</h1>
 <PanelButton buttonIcon="fa-solid fa-trash-can" clickHandler={handleReset} buttonText={getButtonText(state)} bgColor={getBgColor(state)} hoverColor={getHoverColor(state)}>
 </PanelButton>
 {#if state == "CONFIRM"}
-	<p><span class="font-bold">Warning: </span>WebVM will reload</p>
+	<p><span class="font-bold">警告：</span>WebVM 将会重新加载</p>
 {:else if state == "RESETTING"}
-	<p><span class="font-bold">Reset in progress: </span>Please wait...</p>
+	<p><span class="font-bold">重置进行中：</span>请稍候...</p>
 {:else}
-	<p><span class="font-bold">Backend latency: </span>{$diskLatency}ms</p>
+	<p><span class="font-bold">后端延迟：</span>{$diskLatency}ms</p>
 {/if}
-<p>WebVM runs on top of a complete Linux distribution</p>
-<p>Filesystems up to 2GB are supported and data is downloaded completely on-demand</p>
-<p>The WebVM cloud backend uses WebSockets and it's distributed via a global CDN to minimize download latency</p>
+<p>WebVM 运行在一个完整的 Linux 发行版之上</p>
+<p>支持最大 2GB 的文件系统，数据将完全根据需求按需下载</p>
+<p>WebVM 云端后端采用 WebSockets 技术，并通过全球 CDN 进行分发，以最大限度降低下载延迟</p>
