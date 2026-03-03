@@ -2,7 +2,7 @@
 	import BlogPost from './BlogPost.svelte';
 	import { page } from '$app/stores';
 </script>
-<h1 class="text-lg font-bold">Blog posts</h1>
+<h1 class="text-lg font-bold">博客文章</h1>
 <div class="overflow-y-scroll scrollbar flex flex-col gap-2">
 {#each $page.data.posts as post}
 	<BlogPost
