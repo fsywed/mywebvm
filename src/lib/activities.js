@@ -5,3 +5,5 @@ export const diskActivity = writable(false);
 export const aiActivity = writable(false);
 export const cpuPercentage = writable(0);
 export const diskLatency = writable(0);
+
+export const downloadProgress = writable(-1);
