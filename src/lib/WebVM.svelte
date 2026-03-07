@@ -110,10 +110,10 @@ let lastBlockTime = 0;         // 上一个块的时间戳
     if (state == "ready" && isDownloading) {
         isDownloading = false;
         term.write(`\n✅ 下载完成！总块数: ${downloadedBlocks}\n`);
-        downloadProgress.set(-1); // 让进度条消失
+        downloadProgress.set(-1);
     }
 }
-	function latencyCallback(latency)
+function latencyCallback(latency)
 {
     // 原有逻辑（保留）
     diskLatencies.push(latency);
@@ -125,26 +125,15 @@ let lastBlockTime = 0;         // 上一个块的时间戳
     var avg = total / diskLatencies.length;
     diskLatency.set(Math.ceil(avg));
     
-    // ===== 新增：每触发一次，就是一个块 =====
-    const now = Date.now();
-    
-    // 判断是否在下载：连续两个块间隔小于 3 秒
-    if (lastBlockTime > 0 && (now - lastBlockTime) < 3000) {
-        if (!isDownloading) {
-            isDownloading = true;
-            downloadedBlocks = 0; // 新的一次下载，重置计数器
-        }
-        
-        downloadedBlocks++;
-        
-        // 更新 store（显示块数）
-        downloadProgress.set(downloadedBlocks);
-        
-        // 在终端显示（可选）
-        term.write(`\r📦 已下载块数: ${downloadedBlocks}`);
+    // ===== 简化版：只要触发就算一个块 =====
+    if (!isDownloading) {
+        isDownloading = true;
+        downloadedBlocks = 0;
     }
     
-    lastBlockTime = now;
+    downloadedBlocks++;
+    downloadProgress.set(downloadedBlocks);
+    term.write(`\r📦 块 ${downloadedBlocks} (延迟: ${latency}ms)`);
 }
 	function cpuCallback(state)
 	{
