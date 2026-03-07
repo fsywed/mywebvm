@@ -26,6 +26,10 @@
 	var processCount = 0;
 	var curVT = 0;
 	var sideBarPinned = false;
+    // ===== 下载块数统计 =====
+let downloadedBlocks = 0;      // 已下载的块数
+let isDownloading = false;     // 是否正在下载
+let lastBlockTime = 0;         // 上一个块的时间戳
 	function writeData(buf, vt)
 	{
 		if(vt != 1)
@@ -99,20 +103,49 @@
 		cpuPercentage.set(Math.ceil((totalActiveTime / 10000) * 100));
 	}
 	function hddCallback(state)
-	{
-		diskActivity.set(state != "ready");
-	}
+{
+    diskActivity.set(state != "ready");
+    
+    // 当变成空闲状态时，认为下载完成
+    if (state == "ready" && isDownloading) {
+        isDownloading = false;
+        term.write(`\n✅ 下载完成！总块数: ${downloadedBlocks}\n`);
+        downloadProgress.set(-1); // 让进度条消失
+    }
+}
 	function latencyCallback(latency)
-	{
-		diskLatencies.push(latency);
-		if(diskLatencies.length > 30)
-			diskLatencies.shift();
-		var total = 0;
-		for(var i=0;i<diskLatencies.length;i++)
-			total += diskLatencies[i];
-		var avg = total / diskLatencies.length;
-		diskLatency.set(Math.ceil(avg));
-	}
+{
+    // 原有逻辑（保留）
+    diskLatencies.push(latency);
+    if(diskLatencies.length > 30)
+        diskLatencies.shift();
+    var total = 0;
+    for(var i=0;i<diskLatencies.length;i++)
+        total += diskLatencies[i];
+    var avg = total / diskLatencies.length;
+    diskLatency.set(Math.ceil(avg));
+    
+    // ===== 新增：每触发一次，就是一个块 =====
+    const now = Date.now();
+    
+    // 判断是否在下载：连续两个块间隔小于 3 秒
+    if (lastBlockTime > 0 && (now - lastBlockTime) < 3000) {
+        if (!isDownloading) {
+            isDownloading = true;
+            downloadedBlocks = 0; // 新的一次下载，重置计数器
+        }
+        
+        downloadedBlocks++;
+        
+        // 更新 store（显示块数）
+        downloadProgress.set(downloadedBlocks);
+        
+        // 在终端显示（可选）
+        term.write(`\r📦 已下载块数: ${downloadedBlocks}`);
+    }
+    
+    lastBlockTime = now;
+}
 	function cpuCallback(state)
 	{
 		cpuActivity.set(state != "ready");
@@ -375,18 +408,12 @@
 
 <main class="relative w-full h-full">
 	<Nav />
-	<!-- 下载进度可视化：进度条 + 文字提示 -->
-	{#if $downloadProgress >= 0}
-		<div class="fixed top-10 left-0 right-0 h-2 z-50 bg-gray-800 overflow-hidden">
-			<div 
-				class="h-full bg-blue-500 transition-all duration-150 ease-linear" 
-				style="width: {$downloadProgress}%"
-			></div>
-		</div>
-		<div class="fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-1.5 rounded text-sm font-mono">
-			WebVM 磁盘镜像加载中：{$downloadProgress}%
-		</div>
-	{/if}
+	<!-- 下载块数显示 -->
+{#if $downloadProgress >= 0}
+	<div class="fixed top-12 right-4 z-50 bg-black/80 text-white px-4 py-2 rounded text-sm font-mono border border-blue-500">
+		📦 已下载块数: {$downloadProgress}
+	</div>
+{/if}
 	<!-- 原有布局 -->
 	<div class="absolute top-10 bottom-0 left-0 right-0">
 		<SideBar 
