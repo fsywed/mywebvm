@@ -1,4 +1,15 @@
 <script>
+// Promise.withResolvers polyfill (ES2024)
+if (typeof Promise.withResolvers === 'undefined') {
+  Promise.withResolvers = function() {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import Nav from 'labs/packages/global-navbar/src/Nav.svelte';
